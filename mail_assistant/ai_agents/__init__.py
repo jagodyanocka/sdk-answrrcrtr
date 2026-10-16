@@ -1,1 +1,1 @@
-MODEL_NAME = "gpt-5.4-mini"
+MODEL_NAME = "gpt-6-luna"

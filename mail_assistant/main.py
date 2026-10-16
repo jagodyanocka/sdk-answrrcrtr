@@ -1,9 +1,11 @@
 import argparse
 import asyncio
+import os
 
 from agents import Runner, trace
 from dotenv import load_dotenv
 
+from mail_assistant.ai_agents.reply import reply_agent
 from mail_assistant.ai_agents.triage import TriageResult, triage_agent
 from mail_assistant.gmail_client import Email, get_service, list_recent
 from mail_assistant.automated_signals import detect_signals
@@ -15,6 +17,7 @@ load_dotenv()
 MAX_BODY_CHARS = 4000
 # How many emails are sent to the model at the same time.
 CONCURRENCY = 5
+MY_NAME = os.getenv("MY_NAME")
 
 
 def format_email(email: Email) -> str:
@@ -32,6 +35,17 @@ def format_for_automation(email: Email) -> str:
         f"Subject: {email.subject}\n\n"
         f"Header signals:\n{signals.describe()}\n\n"
         f"Body:\n{email.body[:MAX_BODY_CHARS]}"
+    )
+
+
+def format_for_reply(email: Email, triage: TriageResult, my_name: str) -> str:
+    return (
+        f"Category: {triage.category}\n"
+        f"Company: {triage.company or 'unknown'}\n"
+        f"Role: {triage.role or 'unknown'}\n"
+        f"Recruiter name: {triage.recruiter_name or 'unknown'}\n"
+        f"Recruiter's email:\n{format_email(email)}\n"
+        f"Job seeker's name: {my_name}\n"
     )
 
 
@@ -57,13 +71,18 @@ async def main(days: int, max_results: int):
 
     for email, (r, verdict) in zip(emails, results):
         if verdict is None:
-            marker = "-"
+            continue
         else:
             marker = "AUTO" if verdict.is_automated else "HUMAN"
         print(f"{marker:<6} {r.category:<17} {r.company or '':<20.20} {email.subject:<50.50}")
         if verdict is not None:
             print(f"{'':<6} {r.summary}")
             print(f"{'':<6} [{verdict.confidence}] {verdict.reasons}")
+        if verdict is not None and not verdict.is_automated:
+            result = await Runner.run(reply_agent, format_for_reply(email, r, MY_NAME))
+            draft = result.final_output
+            print(f"Draft reply:\n{draft.body}\n")
+
 
 
 if __name__ == "__main__":
