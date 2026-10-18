@@ -10,3 +10,23 @@ dependencies = [
     "pydantic>=2.13.5",
     "python-dotenv>=1.2.4",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Lets tests import `mail_assistant` from the project root.
+pythonpath = ["."]
+# Async test functions run without needing @pytest.mark.asyncio on each one.
+asyncio_mode = "auto"
+# One event loop for the whole test session: the OpenAI client is created once and reuses its
+# HTTP connections, which break if each test gets its own (later closed) event loop.
+asyncio_default_test_loop_scope = "session"
+asyncio_default_fixture_loop_scope = "session"
+markers = ["live: calls the real OpenAI API (costs money); run with `-m live`"]
+# Live tests are skipped unless explicitly selected with `-m live`.
+addopts = "-m 'not live'"

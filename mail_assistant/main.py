@@ -2,7 +2,7 @@ import argparse
 import asyncio
 import os
 
-from agents import Runner, trace
+from agents import Runner, trace, OutputGuardrailTripwireTriggered
 from dotenv import load_dotenv
 
 from mail_assistant.ai_agents.reply import reply_agent
@@ -79,10 +79,13 @@ async def main(days: int, max_results: int):
             print(f"{'':<6} {r.summary}")
             print(f"{'':<6} [{verdict.confidence}] {verdict.reasons}")
         if verdict is not None and not verdict.is_automated:
-            result = await Runner.run(reply_agent, format_for_reply(email, r, MY_NAME))
-            draft = result.final_output
-            print(f"Draft reply:\n{draft.body}\n")
-
+            try:
+                result = await Runner.run(reply_agent, format_for_reply(email, r, MY_NAME))
+                draft = result.final_output
+                print(f"Draft reply:\n{draft.body}\n")
+            except OutputGuardrailTripwireTriggered as e:
+                review = e.guardrail_result.output.output_info
+                print(f"Error occurred while generating reply: {e, review}")
 
 
 if __name__ == "__main__":

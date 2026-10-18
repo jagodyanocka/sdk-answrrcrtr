@@ -1,11 +1,12 @@
 from agents import Agent
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from mail_assistant.ai_agents import MODEL_NAME
+from mail_assistant.guardrails.reply_guardrails import check_email
 
 
 class Reply(BaseModel):
-    subject:  str
+    subject: str
     body: str
 
 reply_agent = Agent(
@@ -47,5 +48,6 @@ If feedback on a previous draft is given, rewrite the draft following that feedb
 keeping everything else that was good.
 """.strip(),
     model=MODEL_NAME,
-    output_type=Reply
+    output_type=Reply,
+    output_guardrails=[check_email]
 )
